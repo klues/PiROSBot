@@ -1,0 +1,8 @@
+<launch>
+
+	<group>
+		<node pkg="rpi_motor_control" name="motorDriver" type="driverd_motor"/>
+		<node pkg="rpi_motor_control" name="camDriver" type="driverd_camera"/>
+	</group>
+
+</launch>
