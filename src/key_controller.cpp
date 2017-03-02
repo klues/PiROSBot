@@ -11,8 +11,8 @@
 
 #include "ros/ros.h"
 #include "std_msgs/String.h"
-#include "rpi_motor_control/DC_Control.h"
-#include "rpi_motor_control/CAM_Control.h"
+#include "pirosbot/DC_Control.h"
+#include "pirosbot/CAM_Control.h"
 #include <motor_defs.h>
 #include <signal.h>
 #include <termios.h>
@@ -80,11 +80,11 @@ KeyController::KeyController()
 	dc_state = 0;
 	dc_speed = 50;
 	dc_duration = 1000;
-	dc_control_pub = control_node.advertise<rpi_motor_control::DC_Control>("dc_control", 1000);
+	dc_control_pub = control_node.advertise<pirosbot::DC_Control>("dc_control", 1000);
 
 	cam_tilt = CAM_PWM_INIT;
 	cam_pan = CAM_PWM_INIT;
-	cam_control_pub = control_node.advertise<rpi_motor_control::CAM_Control>("cam_control", 1000);
+	cam_control_pub = control_node.advertise<pirosbot::CAM_Control>("cam_control", 1000);
 }
 
 /**
@@ -255,7 +255,7 @@ void KeyController::keyLoop(void)
 
 	if(updateFlag == TOPIC_DC_MOTOR) // create & send message for DC engine control
 	{
-		rpi_motor_control::DC_Control dc_ctrl_msg;
+		pirosbot::DC_Control dc_ctrl_msg;
 
 		// TODO: check limits!
 		dc_ctrl_msg.state = dc_state;
@@ -266,7 +266,7 @@ void KeyController::keyLoop(void)
 	}
 	else if(updateFlag == TOPIC_CAM) // create & send message for DC engine control
 	{
-		rpi_motor_control::CAM_Control cam_ctrl_msg;
+		pirosbot::CAM_Control cam_ctrl_msg;
 
 		// TODO: check limits!
 		cam_ctrl_msg.tilt = cam_tilt;

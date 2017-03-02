@@ -12,7 +12,7 @@
 
 #include "ros/ros.h"
 #include "std_msgs/String.h"
-#include "rpi_motor_control/DC_Control.h"
+#include "pirosbot/DC_Control.h"
 #include <motor_defs.h>
 #include <rpi_driverd_mot.h>
 //#include <stdio.h>
@@ -29,7 +29,7 @@
 RPI_Driverd_Mot myDriver;
 
 
-void dc_ControlCallback(const rpi_motor_control::DC_Control& msg)
+void dc_ControlCallback(const pirosbot::DC_Control& msg)
 {
 
   	switch(msg.state)

@@ -12,7 +12,7 @@
 
 #include "ros/ros.h"
 #include "std_msgs/String.h"
-#include "rpi_motor_control/CAM_Control.h"
+#include "pirosbot/CAM_Control.h"
 #include <motor_defs.h>
 #include <rpi_driverd_cam.h>
 #include <stdio.h>
@@ -29,7 +29,7 @@
 RPI_Driverd_Cam myDriver;
 
 
-void cam_ControlCallback(const rpi_motor_control::CAM_Control& msg)
+void cam_ControlCallback(const pirosbot::CAM_Control& msg)
 {
 		myDriver.setCamPos(msg.pan, msg.tilt);
 		ROS_INFO("CAM control!");
