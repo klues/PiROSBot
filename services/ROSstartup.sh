@@ -11,5 +11,5 @@ echo "waiting for wifi connection ... "
 
 
 xfce4-terminal \
-	-T PiROSBot-Motors -e ./PiROSBotMot.sh \
-	--tab -T PiROSBot-Camera -e ./PiROSBotCam.sh 
+	-T PiROSBot-Motors -e "bash /home/ros/services/PiROSBotMot.sh" \
+	--tab -T PiROSBot-Camera -e "bash /home/ros/services/PiROSBotCam.sh" 
