@@ -180,43 +180,57 @@ void JoyController::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
 		uarm_pump_pub.publish(uarm_pump_ctrl_msg);
 	}
 	
-
+	/*if((uarmCoordsSet == true) && 
+	   (((joy->axes[4] != myJoy.axes[4]) && (joy->axes[4] != 0.0))|| 
+	   ((joy->axes[5] != myJoy.axes[5]) && (joy->axes[5] != 0.0))|| 
+	   ((joy->buttons[3] != myJoy.buttons[3]) && (joy->buttons[3] != 0)) || 
+	   ((joy->buttons[5] != myJoy.buttons[5]) && (joy->buttons[5] != 0)) )) // x = [4], y = [5], z = b4 & b6 (=b[3] &b[5]*/
 	if((uarmCoordsSet == true) && 
 	  ((joy->axes[4] != myJoy.axes[4]) || 
 	   (joy->axes[5] != myJoy.axes[5]) || 
 	   (joy->buttons[3] != myJoy.buttons[3]) || 
 	   (joy->buttons[5] != myJoy.buttons[5]))) // x = [4], y = [5], z = b4 & b6 (=b[3] &b[5]
 	{
+		uint8_t status = 0;
 		uarm_metal::Position uarm_coords_msg;
-		uarm_coords_msg.x = this->uarm_pos.x;
+		/*uarm_coords_msg.x = this->uarm_pos.x;
 		uarm_coords_msg.y = this->uarm_pos.y;
-		uarm_coords_msg.z = this->uarm_pos.z;
+		uarm_coords_msg.z = this->uarm_pos.z;*/
 	
 		if(joy->axes[4] > 0) 
-		{uarm_coords_msg.x  +=1;}
+		{this->uarm_pos.x  -=5;}
 		else if(joy->axes[4] < 0)
-		{uarm_coords_msg.x  -=1;}
+		{this->uarm_pos.x  +=5;}
+		else
+		{status++;}
 		
 
 		if(joy->axes[5] > 0) 
-		{uarm_coords_msg.y +=1;}
+		{this->uarm_pos.y +=5;}
 		else if(joy->axes[5] < 0)
-		{uarm_coords_msg.y -=1;}
+		{this->uarm_pos.y -=5;}
+		else
+		{status++;}
 		
 		if((joy->buttons[5] > 0) && (joy->buttons[3] < 1))
-		{uarm_coords_msg.z +=1;}
+		{this->uarm_pos.z +=5;}
 		else if((joy->buttons[3] > 0) && (joy->buttons[5] < 1))
-		{uarm_coords_msg.z -=1;}
+		{this->uarm_pos.z -=5;}
+		else
+		{status++;}
 		
-		uarm_coords_msg.x = roundf(uarm_coords_msg.x);//*100.0)/100.0F;
-		uarm_coords_msg.y = roundf(uarm_coords_msg.y);//*100.0)/100.0F;
-		uarm_coords_msg.z = roundf(uarm_coords_msg.z);//*100.0)/100.0F;
+		if(status < 3) // coordinates changed ;)
+		{
+			uarm_coords_msg.x = roundf(this->uarm_pos.x);//*100.0)/100.0F;
+			uarm_coords_msg.y = roundf(this->uarm_pos.y);//*100.0)/100.0F;
+			uarm_coords_msg.z = roundf(this->uarm_pos.z);//*100.0)/100.0F;
 
-		//ROS_INFO("x %f, y %f, z %f",uarm_coords_msg.x,uarm_coords_msg.y,uarm_coords_msg.z);
-		uarm_cord_pub.publish(uarm_coords_msg);
-		this->uarmStateTime = ros::Time::now();
-		uarmTimer.stop();
-		this->uarmState = 0;
+			ROS_INFO("x %f, y %f, z %f",uarm_coords_msg.x,uarm_coords_msg.y,uarm_coords_msg.z);
+			uarm_cord_pub.publish(uarm_coords_msg);
+			this->uarmStateTime = ros::Time::now();
+			uarmTimer.stop();
+			this->uarmState = 0;
+		}
 
 	}
 
@@ -327,20 +341,20 @@ void JoyController::loop(void)
 			uarm_coords_msg.z = this->uarm_pos.z;
 	
 			if(myJoy.axes[4] > 0) 
-			{uarm_coords_msg.x  +=1;}
+			{uarm_coords_msg.x  -=5;}
 			else if(myJoy.axes[4] < 0)
-			{uarm_coords_msg.x  -=1;}
+			{uarm_coords_msg.x  +=5;}
 		
 
 			if(myJoy.axes[5] > 0) 
-			{uarm_coords_msg.y +=1;}
+			{uarm_coords_msg.y +=5;}
 			else if(myJoy.axes[5] < 0)
-			{uarm_coords_msg.y -=1;}
+			{uarm_coords_msg.y -=5;}
 		
 			if((myJoy.buttons[5] > 0) && (myJoy.buttons[3] < 1))
-			{uarm_coords_msg.z +=1;}
+			{uarm_coords_msg.z +=5;}
 			else if((myJoy.buttons[3] > 0) && (myJoy.buttons[5] < 1))
-			{uarm_coords_msg.z -=1;}
+			{uarm_coords_msg.z -=5;}
 		
 			uarm_coords_msg.x = roundf(uarm_coords_msg.x);//*100.0)/100.0F;
 			uarm_coords_msg.y = roundf(uarm_coords_msg.y);//*100.0)/100.0F;
