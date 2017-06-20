@@ -11,7 +11,7 @@
  */
 
 #include "rpi_driverd_mot.h"
-
+#include <unistd.h>
 
 /**
  * constructor
@@ -157,6 +157,7 @@ void* RPI_Driverd_Mot::dc_stop_thread(void *user)
 			}
 
 		}
+		usleep(10000); // sleep for 10 ms - fine enough
 	}
 	return NULL;
 }
