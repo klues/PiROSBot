@@ -1,6 +1,7 @@
 /*
- * ROS Node: Joy controller for 2 DC motors and camera pan & tilt (2 servomotors).
- * 
+ * ROS Node: Joy controller for 
+ * 	PiROSBot: 2 DC motors and camera tilt
+ * 	uArm:
  * 
  * Copyright © 2017, Thomas Jerabek, UAS Technikum-Wien.
  * This work is free. You can redistribute it and/or modify it under the
@@ -11,37 +12,51 @@
 
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Bool.h"
 #include <sensor_msgs/Joy.h>
+#include <uarm_metal/Position.h>
+#include <uarm_metal/JointAngles.h>
 #include "pirosbot/DC_Control.h"
 #include "pirosbot/CAM_Control.h"
 #include <motor_defs.h>
 #include <math.h>       /* fabs */
 
 
-
 #define CAM_PWM_INIT		1500
 #define CAM_PWM_MIN		1000
 #define CAM_PWM_MAX		2000
-
+#define DC_DURATION_INIT	 100
 
 class JoyController
 {
 public:
 	JoyController();
 	void info(void);	
-
+	void loop (void);
+	
 
 private:
 	void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
+	void uarmCoordsCallback(const uarm_metal::Position::ConstPtr& pos);
+	void uarmJointsCallback(const uarm_metal::JointAngles::ConstPtr& joints);
+	void pirosbotTimerCallback(const ros::TimerEvent&);
+	void uarmTimerCallback(const ros::TimerEvent&);
 
+	// joy vars
 	ros::NodeHandle joy_node;
-	ros::Publisher dc_control_pub;	
-	ros::Publisher cam_control_pub;
   	ros::Subscriber joy_sub;
-
 	sensor_msgs::Joy myJoy;
+
 	double axes[6];
 	bool buttons[12];
+
+	// PiROSBot vars
+	ros::Publisher dc_control_pub;	
+	ros::Publisher cam_control_pub;
+	ros::Timer pirosbotTimer;
+	ros::Time pirosbotStateTime;
+	ros::Duration stateDuration;
+	uint8_t pirosbotState;
 
 	uint8_t dc_state;
 	uint8_t dc_speed;
@@ -49,6 +64,21 @@ private:
 
 	uint16_t cam_tilt;
 	uint16_t cam_pan;
+
+	// uArm vars
+	ros::Publisher uarm_pump_pub;	
+	ros::Publisher uarm_cord_pub;
+	ros::Publisher uarm_joints_pub;
+
+  	ros::Subscriber uarm_coords_sub;
+  	ros::Subscriber uarm_joints_sub;
+	uint8_t uarmState;
+	uarm_metal::Position uarm_pos;
+	uarm_metal::JointAngles uarm_joints;
+	bool uarmCoordsSet;
+	bool uarmJointsSet;
+	ros::Timer uarmTimer;
+	ros::Time uarmStateTime;
 };
 
 
@@ -59,9 +89,13 @@ private:
 */
 JoyController::JoyController()
 {
-	dc_state = 0;
+	pirosbotState = 0;
+
+	dc_state = DC_STOP;
 	dc_speed = 50;
-	dc_duration = 35;
+	dc_duration = DC_DURATION_INIT;
+	stateDuration = (ros::Duration) ( ((double)DC_DURATION_INIT) / 1000);
+	//ROS_INFO("Duration: %f", stateDuration.toSec());
 	dc_control_pub = joy_node.advertise<pirosbot::DC_Control>("dc_control", 1000);
 
 	cam_tilt = CAM_PWM_INIT;
@@ -71,6 +105,17 @@ JoyController::JoyController()
 	myJoy.buttons.resize(12);
 	myJoy.axes.resize(6);
   	joy_sub = joy_node.subscribe<sensor_msgs::Joy>("joy", 10, &JoyController::joyCallback, this);
+
+	// uArm
+	uarmCoordsSet = false;
+  	uarm_coords_sub = joy_node.subscribe<uarm_metal::Position>("uarm_metal/position_read", 10, &JoyController::uarmCoordsCallback, this);
+	
+	uarmJointsSet = false;
+	uarm_joints_sub = joy_node.subscribe<uarm_metal::JointAngles>("uarm_metal/joint_angles_read", 10, &JoyController::uarmJointsCallback, this);
+	
+	uarm_pump_pub = joy_node.advertise<std_msgs::Bool>("uarm_metal/pump", 1000);
+	uarm_cord_pub = joy_node.advertise<uarm_metal::Position>("uarm_metal/position_write", 1000);
+	uarm_joints_pub = joy_node.advertise<uarm_metal::JointAngles>("uarm_metal/joint_angles_write", 1000);
 }
 
 /**
@@ -81,16 +126,16 @@ JoyController::JoyController()
 void JoyController::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
 {
 
-	
+	// PIROSBOT
 	if(joy->axes[3] != myJoy.axes[3])
 	{
 		//ROS_INFO("Tilt: %f",myJoy.axes[3]);
 		pirosbot::CAM_Control cam_ctrl_msg;
-		cam_ctrl_msg.tilt = ((joy->axes[3]+3)*500); // [-1...1] -> [1000...2000] > ((x+3)/2) * 1000
+		cam_ctrl_msg.tilt = ((joy->axes[3]-3)*(-500)); // [-1...1] -> [2000...1000] > ((x-3)/2) * 1000 *(-1)
 		cam_ctrl_msg.pan = 0;
 		cam_control_pub.publish(cam_ctrl_msg);
 	}
-	
+
 	if((joy->axes[0] != myJoy.axes[0]) || (joy->axes[1] != myJoy.axes[1]))
 	{
 		uint8_t myState = DC_STOP;
@@ -116,12 +161,102 @@ void JoyController::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
 			myState = DC_STOP;
 		}*/
 
-		dc_ctrl_msg.state = myState;
-		dc_ctrl_msg.speed = this->dc_speed;//TODO!
-		dc_ctrl_msg.duration = this->dc_duration;
-		dc_control_pub.publish(dc_ctrl_msg);
+		if((myState != dc_state) ) 
+		{	
+			this->pirosbotStateTime = ros::Time::now();
+			dc_ctrl_msg.state = myState;
+			dc_ctrl_msg.speed = this->dc_speed;//TODO!
+			dc_ctrl_msg.duration = this->dc_duration;
+			dc_control_pub.publish(dc_ctrl_msg);
+			pirosbotTimer.stop();
+			this->pirosbotState = 0;
+		}
+		this->dc_state = myState; // update internal state
 	}
 
+	// uArm
+	if(joy->buttons[0] != myJoy.buttons[0])
+	{
+		std_msgs::Bool uarm_pump_ctrl_msg;
+		if (joy->buttons[0] == 1)
+		{
+			uarm_pump_ctrl_msg.data = true;
+		}
+		else
+		{
+			uarm_pump_ctrl_msg.data = false;
+		}
+		uarm_pump_pub.publish(uarm_pump_ctrl_msg);
+	}
+	
+	if((uarmCoordsSet == true) && 
+	  ((joy->axes[4] != myJoy.axes[4]) || 
+	   (joy->axes[5] != myJoy.axes[5]) || 
+	   (joy->buttons[3] != myJoy.buttons[3]) || 
+	   (joy->buttons[5] != myJoy.buttons[5]))) // x = [4], y = [5], z = b4 & b6 (=b[3] &b[5]
+	{
+		uint8_t status = 0;
+		uarm_metal::Position uarm_coords_msg;
+		
+		if(joy->axes[4] > 0) 
+		{this->uarm_pos.x  -=5;}
+		else if(joy->axes[4] < 0)
+		{this->uarm_pos.x  +=5;}
+		else
+		{status++;}
+		
+
+		if(joy->axes[5] > 0) 
+		{this->uarm_pos.y +=5;}
+		else if(joy->axes[5] < 0)
+		{this->uarm_pos.y -=5;}
+		else
+		{status++;}
+		
+		if((joy->buttons[5] > 0) && (joy->buttons[3] < 1))
+		{this->uarm_pos.z +=5;}
+		else if((joy->buttons[3] > 0) && (joy->buttons[5] < 1))
+		{this->uarm_pos.z -=5;}
+		else
+		{status++;}
+		
+		if(status < 3) // coordinates changed ;)
+		{
+			uarm_coords_msg.x = roundf(this->uarm_pos.x);//*100.0)/100.0F;
+			uarm_coords_msg.y = roundf(this->uarm_pos.y);//*100.0)/100.0F;
+			uarm_coords_msg.z = roundf(this->uarm_pos.z);//*100.0)/100.0F;
+
+			ROS_INFO("x %f, y %f, z %f",uarm_coords_msg.x,uarm_coords_msg.y,uarm_coords_msg.z);
+			uarm_cord_pub.publish(uarm_coords_msg);
+			this->uarmStateTime = ros::Time::now();
+			uarmTimer.stop();
+			this->uarmState = 0;
+		}
+
+	}
+	if((uarmJointsSet == true) && 
+	  ((joy->buttons[2] != myJoy.buttons[2]) || 
+	   (joy->buttons[4] != myJoy.buttons[4]))) // B[2] = +1; B[4] = -1
+	{
+		uarm_metal::JointAngles uarm_joints_msg;
+
+		uarm_joints_msg.j0 = this->uarm_joints.j0;
+		uarm_joints_msg.j1 = this->uarm_joints.j1;
+		uarm_joints_msg.j2 = this->uarm_joints.j2;
+		uarm_joints_msg.j3 = this->uarm_joints.j3;
+		if((joy->buttons[2] == 1) && (this->uarm_joints.j3 <= 179))
+		{
+			uarm_joints_msg.j3+=1;
+		}
+		else if((joy->buttons[4] == 1) && (this->uarm_joints.j3 >= 1))
+		{
+			uarm_joints_msg.j3-=1;
+		}
+		
+		//ROS_INFO("JA_: %f, %f, %f, %f",uarm_joints_msg.j0,uarm_joints_msg.j1,uarm_joints_msg.j2,uarm_joints_msg.j3);
+		uarm_joints_pub.publish(uarm_joints_msg);
+	}
+	
 	for(int i=0;i<joy->buttons.size();i++) // use std::copy(...)
 	{
 		myJoy.buttons[i] = joy->buttons[i];
@@ -130,8 +265,48 @@ void JoyController::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
 	{
 		myJoy.axes[i] = joy->axes[i];
 	}
-	//ROS_INFO("joy callback");
+
 }
+
+void JoyController::uarmCoordsCallback(const uarm_metal::Position::ConstPtr& pos)
+{
+	this->uarm_pos.x = pos->x;
+	this->uarm_pos.y = pos->y;
+	this->uarm_pos.z = pos->z;
+	if(uarmCoordsSet == false)
+	{
+		ROS_INFO("uarm position set");
+		uarmCoordsSet = true;
+	}
+}
+
+void JoyController::uarmJointsCallback(const uarm_metal::JointAngles::ConstPtr& joints)
+{
+	this->uarm_joints.j0 = joints->j0;
+	this->uarm_joints.j1 = joints->j1;
+	this->uarm_joints.j2 = joints->j2;
+	this->uarm_joints.j3 = joints->j3;
+	if(uarmJointsSet == false)
+	{
+		ROS_INFO("uarm joints set");
+		//ROS_INFO("JA: %f, %f, %f, %f",joints->j0,joints->j1,joints->j2,joints->j3);
+		uarmJointsSet = true;
+	}
+}
+
+void JoyController::pirosbotTimerCallback(const ros::TimerEvent& event)
+{
+	//ROS_INFO("t_cb1");
+	this->pirosbotState = 1;
+}
+
+void JoyController::uarmTimerCallback(const ros::TimerEvent& event)
+{
+	//ROS_INFO("t_cb2");
+	this->uarmState = 1;
+}
+
+
 
 /**
 *	
@@ -142,7 +317,7 @@ void JoyController::info(void)
 {
 	puts("-------------------------------------------");
 	puts("Joy Control for DC motors, camera movement and uArm:");
-	puts("... todo ... ");
+	puts("... todo (see documentation) ... ");
 	/*puts("- Arrow keys:			DC: move robot");
 	puts("- Space:		DC: stop");
 	puts("- m:			DC: increase speed");
@@ -160,6 +335,105 @@ void JoyController::info(void)
   	return;
 }
 
+void JoyController::loop(void)
+{
+	pirosbot::DC_Control dc_ctrl_msg;
+	pirosbot::CAM_Control cam_ctrl_msg;
+	uarm_metal::Position uarm_coords_msg;
+	uarm_metal::JointAngles uarm_joints_msg;
+	pirosbotTimer = joy_node.createTimer(ros::Duration(0.025), &JoyController::pirosbotTimerCallback,this, true);
+	uarmTimer = joy_node.createTimer(ros::Duration(0.025), &JoyController::uarmTimerCallback,this, true);
+	
+	pirosbotTimer.stop();
+	uarmTimer.stop();
+	this->pirosbotState = 0;
+	this->uarmState = 0;
+
+	while (ros::ok())
+	{
+		if( (dc_state != DC_STOP) && 
+		    (this->pirosbotState != 2) &&
+		    ((ros::Time::now().toSec() + 0.05) >= (pirosbotStateTime.toSec() + stateDuration.toSec())) )
+		{	
+			this->pirosbotStateTime = ros::Time::now();
+			dc_ctrl_msg.state = dc_state;
+			dc_ctrl_msg.speed = this->dc_speed;//TODO!
+			dc_ctrl_msg.duration = this->dc_duration;
+			dc_control_pub.publish(dc_ctrl_msg);
+			this->pirosbotState = 0;
+		
+		}
+		else if(this->pirosbotState == 0)
+		{
+			pirosbotTimer.setPeriod(ros::Duration(0.025));
+			pirosbotTimer.start();
+			this->pirosbotState = 2;
+		}
+	
+		if(this->uarmState == 1)
+		{	
+			this->uarmStateTime = ros::Time::now();
+
+			if((uarmCoordsSet == true) && 
+			((fabs(myJoy.axes[4]) > 0) || (fabs(myJoy.axes[5]) > 0) || 
+		   	(myJoy.buttons[3] > 0) || (myJoy.buttons[5] > 0)))
+			{
+				uarm_coords_msg.x = this->uarm_pos.x;
+				uarm_coords_msg.y = this->uarm_pos.y;
+				uarm_coords_msg.z = this->uarm_pos.z;
+	
+				if(myJoy.axes[4] > 0) 
+				{uarm_coords_msg.x  -=10;}
+				else if(myJoy.axes[4] < 0)
+				{uarm_coords_msg.x  +=10;}
+		
+
+				if(myJoy.axes[5] > 0) 
+				{uarm_coords_msg.y +=10;}
+				else if(myJoy.axes[5] < 0)
+				{uarm_coords_msg.y -=10;}
+		
+				if((myJoy.buttons[5] > 0) && (myJoy.buttons[3] < 1))
+				{uarm_coords_msg.z +=10;}
+				else if((myJoy.buttons[3] > 0) && (myJoy.buttons[5] < 1))
+				{uarm_coords_msg.z -=10;}
+		
+				uarm_coords_msg.x = roundf(uarm_coords_msg.x);//*100.0)/100.0F;
+				uarm_coords_msg.y = roundf(uarm_coords_msg.y);//*100.0)/100.0F;
+				uarm_coords_msg.z = roundf(uarm_coords_msg.z);//*100.0)/100.0F;
+
+				uarm_cord_pub.publish(uarm_coords_msg);
+				this->uarmState = 0;
+			}
+			if((uarmJointsSet == true) && ((myJoy.buttons[2] > 0) || (myJoy.buttons[4] > 0)) )
+			{
+				uarm_joints_msg.j0 = this->uarm_joints.j0;
+				uarm_joints_msg.j1 = this->uarm_joints.j1;
+				uarm_joints_msg.j2 = this->uarm_joints.j2;
+				uarm_joints_msg.j3 = this->uarm_joints.j3;
+
+				if((myJoy.buttons[2] == 1) && (uarm_joints_msg.j3 <= 178))
+				{uarm_joints_msg.j3 +=5.0;}
+				else if((myJoy.buttons[4] == 1) && (uarm_joints_msg.j3 >= 2))
+				{uarm_joints_msg.j3 -=5.0;}
+				//ROS_INFO("JA.: %f, %f, %f, %f",uarm_joints_msg.j0,uarm_joints_msg.j1,uarm_joints_msg.j2,uarm_joints_msg.j3);
+				uarm_joints_pub.publish(uarm_joints_msg);
+				this->uarmState = 0;
+			}
+		}
+		else if(this->uarmState == 0)
+		{
+			uarmTimer.setPeriod(ros::Duration(0.25));
+			uarmTimer.start();
+			this->uarmState = 2;
+		}
+
+
+		ros::spinOnce();	
+	}
+
+  	return;
+}
 
 int main(int argc, char **argv)
 {
@@ -169,7 +443,10 @@ int main(int argc, char **argv)
 
 	myJoyController.info();
 
-	ros::spin();
+	myJoyController.loop();
+	
+	//ros::spin();
+	ros::shutdown();	// shutdown ros
 	return 0;
 }
 

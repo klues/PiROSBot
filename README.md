@@ -8,6 +8,21 @@ uses https://github.com/joan2937/pigpio to control GPIOs (included in this repo 
 
 
 # Joy Controller
+<<<<<<< HEAD
+=======
+
+The joy controller is an experimental interface for PiROSBot and uArm!
+
+## PiROSBot
+
+Setup the uarm_metal ROS package https://github.com/jerabek/uarm_metal with all depenencies (see uarm_metal README).
+
+$ rosrun uarm_metal uarm.py / or $ roslaunch uarm_metal uarm.launch
+
+$ rosparam set /uarm_metal/read_position 1 (also executable from remote pc)
+
+## Remote (PC)
+>>>>>>> origin/joyctrl
 Following steps are necessary to use the joy controller:
 
 $ sudo apt-get install ros-kinetic-joy
@@ -29,3 +44,8 @@ $ rosrun joy joy_node
 Terminal 2:
 
 $ rosrun pirosbot joy_controller 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> origin/joyctrl
