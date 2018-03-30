@@ -40,8 +40,8 @@ uint16_t SRF02::getDistance(void)
 	{
 		//TODO: do distance measurement for SRF02 ultrasonic module
 		//use methods
-		//int i2c_write_byte(int pi, unsigned handle, unsigned bVal)
 		//int i2c_write_byte_data(int pi, unsigned handle, unsigned i2c_reg, unsigned bVal)
+		//int i2c_read_byte_data(int pi, unsigned handle, unsigned i2c_reg)
 		//int i2c_close(int pi, unsigned handle)
 		//int usleep(useconds_t usec);
 		
