@@ -31,7 +31,7 @@ SRF02::~SRF02()
 
 uint16_t SRF02::getDistance(void)
 {
-	uint16_t distance = -1;
+	uint16_t distance = 0;
 	int handle;
 	
 	handle = i2c_open(piID,1,0x70,0); // "/dev/i2c-1", default address is 0xE0 -> must be shifted right
@@ -40,8 +40,8 @@ uint16_t SRF02::getDistance(void)
 	{
 		//TODO: do distance measurement for SRF02 ultrasonic module
 		//use methods
-		//int i2c_write_byte(int pi, unsigned handle, unsigned bVal)
 		//int i2c_write_byte_data(int pi, unsigned handle, unsigned i2c_reg, unsigned bVal)
+		//int i2c_read_byte_data(int pi, unsigned handle, unsigned i2c_reg)
 		//int i2c_close(int pi, unsigned handle)
 		//int usleep(useconds_t usec);
 		
@@ -49,8 +49,13 @@ uint16_t SRF02::getDistance(void)
 		// http://abyz.me.uk/rpi/pigpio/pdif2.html#i2c_write_byte
 		// http://man7.org/linux/man-pages/man3/usleep.3.html
 		// https://www.robot-electronics.co.uk/htm/srf02techSer.htm
+
+		i2c_write_byte_data(piID, handle, 0x00, 0x51);
+		usleep(66000);
+        distance = i2c_read_byte_data(piID, handle, 0x03);
 	}
 
+	i2c_close(piID, handle);
 	return distance;	
 }
 

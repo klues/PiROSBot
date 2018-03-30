@@ -48,6 +48,10 @@ add_executable(key_controller src/key_controller.cpp)
 target_link_libraries(key_controller ${catkin_LIBRARIES})
 add_dependencies(key_controller pirosbot_generate_messages_cpp)
 
+add_executable(distance_node src/distance_node.cpp src/srf02.cpp)
+target_link_libraries(distance_node ${catkin_LIBRARIES} libpigpiod_if2.so)
+add_dependencies(distance_node pirosbot_generate_messages_cpp)
+
 # add_executable(joy_controller src/joy_controller.cpp)
 # target_link_libraries(joy_controller ${catkin_LIBRARIES})
 # add_dependencies(joy_controller pirosbot_generate_messages_cpp)
