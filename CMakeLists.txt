@@ -48,7 +48,7 @@ add_executable(key_controller src/key_controller.cpp)
 target_link_libraries(key_controller ${catkin_LIBRARIES})
 add_dependencies(key_controller pirosbot_generate_messages_cpp)
 
-add_executable(joy_controller src/joy_controller.cpp)
-target_link_libraries(joy_controller ${catkin_LIBRARIES})
-add_dependencies(joy_controller pirosbot_generate_messages_cpp)
+# add_executable(joy_controller src/joy_controller.cpp)
+# target_link_libraries(joy_controller ${catkin_LIBRARIES})
+# add_dependencies(joy_controller pirosbot_generate_messages_cpp)
 
