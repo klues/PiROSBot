@@ -1,6 +1,15 @@
 #! /bin/bash
+#prevent duplicated start of script
+if ! mkdir /tmp/rosstart.lock 2>/dev/null; then
+    rm -rf /tmp/rosstart.lock
+    echo "startup script already running" >&2
+    exit 1
+fi
+
 echo "waiting for system startup..."
-sleep 20
+sleep 10
+
+rm -rf /tmp/rosstart.lock
 
 # wait for network connection (wifi) before setting ROS IP
 #echo "waiting for wifi connection ... " 
