@@ -3,6 +3,10 @@ from time import sleep
 
 camera = PiCamera()
 
-camera.start_preview()
-sleep(1)
-camera.stop_preview()
+try:
+    camera.start_preview()
+    sleep(1)
+    camera.stop_preview()
+    pass
+finally:
+    camera.close()
