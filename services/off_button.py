@@ -23,14 +23,20 @@ GPIO.setup(gpio_pin_number, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 #The pull-up resistor means the pin is high by default
 
 while True:
+	print('off button started, waiting for falling edge...')	
 	GPIO.wait_for_edge(gpio_pin_number, GPIO.FALLING)
 	#Use falling edge detection to see if pin is pulled 
 	#low to avoid repeated polling
-
+	print('detected edge, waiting...')
 	time.sleep(3)
 	#wait 3 seconds, if still pressed
 
 	if GPIO.input(gpio_pin_number) is GPIO.LOW:
+		print('killing running ros instances...')		
+		os.system("pkill roscore")
+		os.system("pkill roslaunch")
+		os.system("pkill rosrun")
+		print('shutting down...')
 		os.system("sudo shutdown -h now")
 		#Send command to system to shutdown
 	else:
