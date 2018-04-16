@@ -9,7 +9,7 @@ source $ROSMAINSOURCE
 source $ROSSOURCE 
 
 export ROS_PORT=11311
-export ROS_HOSTNAME=$(hostname)
+export ROS_IP=$(hostname -I)
 export ROS_MASTER_URI=http://localhost:$ROS_PORT
 
 echo $ROS_PORT

@@ -1,15 +1,12 @@
 #! /bin/bash
 #prevent duplicated start of script
 if ! mkdir /tmp/rosstart.lock 2>/dev/null; then
-    rm -rf /tmp/rosstart.lock
     echo "startup script already running" >&2
     exit 1
 fi
 
 echo "waiting for system startup..."
 sleep 10
-
-rm -rf /tmp/rosstart.lock
 
 # wait for network connection (wifi) before setting ROS IP
 #echo "waiting for wifi connection ... " 
@@ -34,6 +31,7 @@ sleep 10
 xfce4-terminal \
 	-H -T PiROSBot-Cam -e "bash /home/ros/services/PiROSBotCam.sh"
 
+rm -rf /tmp/rosstart.lock
 read -p "Press any key to continue... " -n1 -s
 
 
