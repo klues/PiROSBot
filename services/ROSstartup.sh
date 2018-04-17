@@ -2,7 +2,7 @@
 #prevent duplicated start of script
 if ! mkdir /tmp/rosstart.lock 2>/dev/null; then
     echo "startup script already running" >&2
-    exit 1
+    exit 0
 fi
 
 echo "waiting for system startup..."
