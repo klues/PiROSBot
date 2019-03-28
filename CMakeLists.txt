@@ -11,6 +11,11 @@ add_message_files(
 	CAM_Control.msg
 )
 
+add_service_files(
+	FILES 
+    SetDistance.srv
+)
+
 ## Generate added messages and services
 generate_messages(DEPENDENCIES std_msgs)
 
@@ -32,9 +37,9 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${MY_IN
 link_directories("/usr/local/lib/")
 
 
-add_executable(driver src/driver.cpp src/rpi_motor_driver/rpi_driver.cpp)
-target_link_libraries(driver ${catkin_LIBRARIES} libpigpio.so)
-add_dependencies(driver pirosbot_generate_messages_cpp)
+# add_executable(driver src/driver.cpp src/rpi_motor_driver/rpi_driver.cpp)
+# target_link_libraries(driver ${catkin_LIBRARIES} libpigpio.so)
+# add_dependencies(driver pirosbot_generate_messages_cpp)
 
 add_executable(driverd_motor src/driverd_motor.cpp src/rpi_motor_driver/rpi_driverd_mot.cpp)
 target_link_libraries(driverd_motor ${catkin_LIBRARIES} libpigpiod_if2.so)
@@ -48,7 +53,10 @@ add_executable(key_controller src/key_controller.cpp)
 target_link_libraries(key_controller ${catkin_LIBRARIES})
 add_dependencies(key_controller pirosbot_generate_messages_cpp)
 
-# add_executable(joy_controller src/joy_controller.cpp)
-# target_link_libraries(joy_controller ${catkin_LIBRARIES})
-# add_dependencies(joy_controller pirosbot_generate_messages_cpp)
+add_executable(distance_node_fake src/distance_node_fake.cpp)
+target_link_libraries(distance_node_fake ${catkin_LIBRARIES})
+add_dependencies(distance_node_fake pirosbot_generate_messages_cpp)
 
+add_executable(mode_demo src/mode_demo.cpp)
+target_link_libraries(mode_demo ${catkin_LIBRARIES})
+add_dependencies(mode_demo pirosbot_generate_messages_cpp)
