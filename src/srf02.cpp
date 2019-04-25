@@ -48,7 +48,7 @@ uint16_t SRF02::getDistance(void)
 		//see documentation:
 		// http://abyz.me.uk/rpi/pigpio/pdif2.html#i2c_write_byte
 		// http://man7.org/linux/man-pages/man3/usleep.3.html
-		// https://www.robot-electronics.co.uk/htm/srf02techSer.htm
+		// https://www.robot-electronics.co.uk/htm/srf02techI2C.htm
 	}
 
 	return distance;	
